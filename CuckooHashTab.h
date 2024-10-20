@@ -15,15 +15,15 @@ public:
 
 private:
     struct Entry {
-        std::string key;                  // Clave (por ejemplo, DNI)
-        std::vector<char> compressedData; // Datos comprimidos
+        std::string key;                  
+        std::vector<char> compressedData; 
     };
 
-    int size;   // Tamaño de las tablas
-    int num_tables; // Número de tablas
-    std::vector<std::vector<Entry>> tables; // Tablas de hash
+    int size;   
+    int num_tables; 
+    std::vector<std::vector<Entry>> tables; 
 
-    // Funciones hash
+    
     size_t hash1(const std::string& key) const;
     size_t hash2(const std::string& key) const;
     size_t default_hash(const std::string& key, int table_idx) const;
