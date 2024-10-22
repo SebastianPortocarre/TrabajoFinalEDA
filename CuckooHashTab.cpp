@@ -31,16 +31,16 @@ int CuckooHashTab::hash(int table_idx, const string& key) const {
 }
 
 size_t CuckooHashTab::hash1(const string& key) const {
-    return hash<string>{}(key);
+    return ::hash<string>{}(key);
 }
 
 size_t CuckooHashTab::hash2(const string& key) const {
-    hash<string> hasher;
+    ::hash<string> hasher;
     return hasher("salt1" + key);
 }
 
 size_t CuckooHashTab::default_hash(const string& key, int table_idx) const {
-    hash<string> hasher;
+    ::hash<string> hasher;
     return hasher("salt" + to_string(table_idx) + key);
 }
 
