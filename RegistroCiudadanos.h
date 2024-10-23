@@ -1,3 +1,4 @@
+// RegistroCiudadanos.h
 #ifndef REGISTROCIUDADANOS_H
 #define REGISTROCIUDADANOS_H
 
@@ -7,6 +8,7 @@
 #include <fstream>
 #include "Ciudadano.h"
 #include "Tablas.h"
+#include "CuckooHashTab.h" // Asegúrate de incluir el encabezado
 
 class RegistroCiudadanos {
 public:
@@ -21,12 +23,19 @@ public:
     void imprimirTresDniAleatorios();                   // Imprimir tres DNIs aleatorios
     void exportarACSV(const std::string& nombre_archivo); // Exportar datos a CSV
     Tablas tablas;
+
 private:
     std::vector<CiudadanoOptimizado> ciudadanos; // Vector que almacena a todos los ciudadanos
+
+    // Bitmap para rastrear DNIs ya utilizados y evitar duplicados
+    std::vector<bool> used_dnis;
 
     // Rango válido de DNI
     static const uint32_t DNI_MIN = 10000000;
     static const uint32_t DNI_MAX = 99999999;
+
+    // Instancia de CuckooHashTab
+    CuckooHashTab cuckooHashTable;
 
     // Funciones auxiliares para generar datos aleatorios
     uint32_t generarDniAleatorio();
