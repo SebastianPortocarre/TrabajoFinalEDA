@@ -2,11 +2,17 @@
 #include <iostream>
 #include <algorithm>
 #include <random>
-#include <ctime>
+#include <fstream>
+#include <cctype>
+
 using namespace std;
 
 // Constructor
 RegistroCiudadanos::RegistroCiudadanos() {
+    // Inicializar el bitmap de DNIs usados
+    size_t total_dnis = DNI_MAX - DNI_MIN + 1;
+    used_dnis.assign(total_dnis, false);
+
     // Intentar cargar los datos desde el archivo binario
     string nombre_archivo_binario = "ciudadanos.bin";
     ifstream infile(nombre_archivo_binario, ios::binary);
@@ -14,6 +20,14 @@ RegistroCiudadanos::RegistroCiudadanos() {
         infile.close();
         if (cargarDesdeArchivo(nombre_archivo_binario)) {
             cout << "Datos cargados exitosamente desde " << nombre_archivo_binario << ".\n";
+            // Marcar los DNIs existentes en el bitmap
+            for (const auto& ciudadano : ciudadanos) {
+                if (ciudadano.dni >= DNI_MIN && ciudadano.dni <= DNI_MAX) {
+                    used_dnis[ciudadano.dni - DNI_MIN] = true;
+                } else {
+                    cerr << "Advertencia: DNI " << ciudadano.dni << " fuera del rango válido.\n";
+                }
+            }
             // Ordenar el vector por DNI después de cargar
             sort(ciudadanos.begin(), ciudadanos.end(), [](const CiudadanoOptimizado& a, const CiudadanoOptimizado& b) -> bool {
                 return a.dni < b.dni;
@@ -24,8 +38,8 @@ RegistroCiudadanos::RegistroCiudadanos() {
             cerr << "Error al cargar los datos desde " << nombre_archivo_binario << ". Generando nuevos datos.\n";
         }
     } else {
-        cout << "Archivo de datos no encontrado. Generando 33 millones de ciudadanos.\n";
-        generarCiudadanosAleatorios(33000000);
+        cout << "Archivo de datos no encontrado. Generando ciudadanos aleatorios.\n";
+        generarCiudadanosAleatorios(33000000); // Puedes ajustar la cantidad según tus necesidades
         // Ordenar el vector por DNI después de generar
         sort(ciudadanos.begin(), ciudadanos.end(), [](const CiudadanoOptimizado& a, const CiudadanoOptimizado& b) -> bool {
             return a.dni < b.dni;
@@ -39,6 +53,7 @@ RegistroCiudadanos::RegistroCiudadanos() {
     }
 }
 
+// Destructor
 RegistroCiudadanos::~RegistroCiudadanos() {
     // Guardar los datos al finalizar
     string nombre_archivo_binario = "ciudadanos.bin";
@@ -49,7 +64,7 @@ RegistroCiudadanos::~RegistroCiudadanos() {
     }
 }
 
-// Función para generar 33 millones de ciudadanos aleatorios
+// Función para generar 33 millones de ciudadanos aleatorios sin duplicados
 void RegistroCiudadanos::generarCiudadanosAleatorios(int cantidad) {
     if (cantidad <= 0) {
         cerr << "Cantidad inválida para generar ciudadanos.\n";
@@ -66,7 +81,7 @@ void RegistroCiudadanos::generarCiudadanosAleatorios(int cantidad) {
     uniform_int_distribution<int> dis_nacionalidad(0, 1);
     uniform_int_distribution<int> dis_estado_civil(0, 3);
 
-    // Listas ampliadas de nombres y apellidos para generar nombres completos
+    // Listas de nombres y apellidos
     vector<string> nombres = {
         "Juan", "María", "Carlos", "Ana", "Luis", "Carmen",
         "Pedro", "Lucía", "Jorge", "Sofía", "Miguel", "Elena",
@@ -100,10 +115,15 @@ void RegistroCiudadanos::generarCiudadanosAleatorios(int cantidad) {
 
     for (int i = 0; i < cantidad; ++i) {
         CiudadanoOptimizado ciudadano;
+        uint32_t dni;
 
-        // Generar DNI único (Nota: Este método no garantiza unicidad)
-        ciudadano.dni = dis_dni(gen);
-        // Para evitar duplicados, considera implementar una verificación adicional
+        // Generar DNI único
+        do {
+            dni = dis_dni(gen);
+        } while (used_dnis[dni - DNI_MIN]); // Verificar si ya se usó
+
+        used_dnis[dni - DNI_MIN] = true; // Marcar como usado
+        ciudadano.dni = dni;
 
         // Generar Nombre y Apellido
         string nombre = nombres[dis_nombres(gen)];
@@ -119,20 +139,11 @@ void RegistroCiudadanos::generarCiudadanosAleatorios(int cantidad) {
         ciudadano.nacionalidad = (dis_nacionalidad(gen) == 0) ? Nacionalidad::Peruano : Nacionalidad::Extranjero;
 
         // Generar Dirección
-        string departamento = departamentos_lista[dis_departamentos(gen)];
-        ciudadano.direccion.departamento = tablas.obtenerIndiceDepartamento(departamento);
-
-        string provincia = provincias_lista[dis_provincias(gen)];
-        ciudadano.direccion.provincia = tablas.obtenerIndiceProvincia(provincia);
-
-        string ciudad = ciudades_lista[dis_ciudades(gen)];
-        ciudadano.direccion.ciudad = tablas.obtenerIndiceCiudad(ciudad);
-
-        string distrito = distritos_lista[dis_distritos(gen)];
-        ciudadano.direccion.distrito = tablas.obtenerIndiceDistrito(distrito);
-
-        string ubicacion = ubicaciones_lista[dis_ubicaciones(gen)];
-        ciudadano.direccion.ubicacion = tablas.obtenerIndiceUbicacion(ubicacion);
+        ciudadano.direccion.departamento = tablas.obtenerIndiceDepartamento(departamentos_lista[dis_departamentos(gen)]);
+        ciudadano.direccion.provincia = tablas.obtenerIndiceProvincia(provincias_lista[dis_provincias(gen)]);
+        ciudadano.direccion.ciudad = tablas.obtenerIndiceCiudad(ciudades_lista[dis_ciudades(gen)]);
+        ciudadano.direccion.distrito = tablas.obtenerIndiceDistrito(distritos_lista[dis_distritos(gen)]);
+        ciudadano.direccion.ubicacion = tablas.obtenerIndiceUbicacion(ubicaciones_lista[dis_ubicaciones(gen)]);
 
         // Generar Teléfono
         ciudadano.telefono = dis_telefono(gen);
@@ -177,6 +188,9 @@ void RegistroCiudadanos::insertarCiudadanoManual() {
         return;
     }
 
+    // Marcar el DNI como usado en el bitmap
+    used_dnis[nuevo_ciudadano.dni - DNI_MIN] = true;
+
     // Ingreso de Nombre y Apellido
     string nombre, apellido;
     cout << "Ingrese el Nombre: ";
@@ -200,6 +214,8 @@ void RegistroCiudadanos::insertarCiudadanoManual() {
         nuevo_ciudadano.nacionalidad = Nacionalidad::Extranjero;
     else {
         cerr << "Opción de Nacionalidad no válida.\n";
+        // Desmarcar el DNI ya marcado
+        used_dnis[nuevo_ciudadano.dni - DNI_MIN] = false;
         return;
     }
 
@@ -252,6 +268,8 @@ void RegistroCiudadanos::insertarCiudadanoManual() {
             break;
         default:
             cerr << "Opción de Estado Civil no válida.\n";
+            // Desmarcar el DNI ya marcado
+            used_dnis[nuevo_ciudadano.dni - DNI_MIN] = false;
             return;
     }
 
@@ -290,6 +308,9 @@ bool RegistroCiudadanos::eliminarCiudadano(uint32_t dni) {
         });
 
     if (it != ciudadanos.end() && it->dni == dni) {
+        // Desmarcar el DNI en el bitmap
+        used_dnis[dni - DNI_MIN] = false;
+
         ciudadanos.erase(it);
         cout << "Ciudadano con DNI " << dni << " eliminado correctamente.\n";
         return true;
@@ -411,9 +432,9 @@ uint32_t RegistroCiudadanos::generarDniAleatorio() {
 
 string RegistroCiudadanos::generarNombreAleatorio() {
     static vector<string> nombres = { "Juan", "María", "Carlos", "Ana", "Luis", "Carmen",
-                                               "Pedro", "Lucía", "Jorge", "Sofía", "Miguel", "Elena",
-                                               "Andrés", "Isabel", "Fernando", "Laura", "Ricardo", "Patricia",
-                                               "Daniel", "Claudia", "Gabriel", "Fernanda", "Santiago", "Valeria" };
+                                     "Pedro", "Lucía", "Jorge", "Sofía", "Miguel", "Elena",
+                                     "Andrés", "Isabel", "Fernando", "Laura", "Ricardo", "Patricia",
+                                     "Daniel", "Claudia", "Gabriel", "Fernanda", "Santiago", "Valeria" };
     static random_device rd;
     static mt19937 gen(rd());
     uniform_int_distribution<> dis(0, nombres.size() - 1);
@@ -422,9 +443,9 @@ string RegistroCiudadanos::generarNombreAleatorio() {
 
 string RegistroCiudadanos::generarApellidoAleatorio() {
     static vector<string> apellidos = { "Pérez", "González", "Rodríguez", "López", "García", "Martínez",
-                                                 "Sánchez", "Ramírez", "Torres", "Flores", "Díaz", "Morales",
-                                                 "Vásquez", "Jiménez", "Rojas", "Alvarez", "Castillo", "Vega",
-                                                 "Ortiz", "Silva", "Mendoza", "Cortez", "Ruiz", "Reyes" };
+                                       "Sánchez", "Ramírez", "Torres", "Flores", "Díaz", "Morales",
+                                       "Vásquez", "Jiménez", "Rojas", "Alvarez", "Castillo", "Vega",
+                                       "Ortiz", "Silva", "Mendoza", "Cortez", "Ruiz", "Reyes" };
     static random_device rd;
     static mt19937 gen(rd());
     uniform_int_distribution<> dis(0, apellidos.size() - 1);
@@ -448,8 +469,7 @@ string RegistroCiudadanos::generarEmailAleatorio(const string& nombre, const str
 
 string RegistroCiudadanos::generarUbicacionAleatoria() {
     static vector<string> ubicaciones = { "Av. Pardo 123", "Calle 50 #456", "Jr. Las Flores 789",
-                                                   "Av. Arequipa 321", "Calle Lima 654", "Av. Cusco 987",
-                                                   "Calle Trujillo 111", "Jr. Piura 222", "Av. Junín 333", "Calle Tacna 444" };
+                                         "Av. Arequipa 321", "Calle Lima 654" };
     static random_device rd;
     static mt19937 gen(rd());
     uniform_int_distribution<> dis(0, ubicaciones.size() - 1);
