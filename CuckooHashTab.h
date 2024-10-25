@@ -15,15 +15,15 @@ public:
 
 private:
     struct Entry {
-        std::string key;                  
-        std::vector<char> compressedData; 
+        std::string key;
+        std::vector<char> compressedData;
     };
 
-    int size;   
-    int num_tables; 
-    std::vector<std::vector<Entry>> tables; 
+    int size;
+    int num_tables;
+    std::vector<std::vector<Entry>> tables;
 
-    
+
     size_t hash1(const std::string& key) const;
     size_t hash2(const std::string& key) const;
     size_t default_hash(const std::string& key, int table_idx) const;
